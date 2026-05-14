@@ -11,6 +11,7 @@
       background: #B8B4AC;
       min-height: 100vh;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 20px;
@@ -361,6 +362,9 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      cursor: pointer;
+      touch-action: none;
+      user-select: none;
       justify-content: flex-end;
       padding: 4px 2px 5px;
       cursor: default;
@@ -447,7 +451,7 @@
     <div class="ctrl-section">
       <div class="ctrl-title">Waveform</div>
       <div class="wave-row" id="waveGroup">
-        <button class="wave-btn active" data-wave="sine"     style="--c:#2B4FA3">
+        <button class="wave-btn" data-wave="sine"     style="--c:#2B4FA3">
           <svg viewBox="0 0 44 22" fill="none"><path d="M0,11 C4,11 6,2 11,2 C16,2 18,20 22,20 C26,20 28,2 33,2 C38,2 40,11 44,11" stroke-width="2" stroke-linecap="round"/></svg>
           <span class="wave-lbl">Sine</span>
         </button>
@@ -463,7 +467,7 @@
           <svg viewBox="0 0 44 22" fill="none"><path d="M0,17 L11,5 L22,17 L33,5 L44,17" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span class="wave-lbl">Tri</span>
         </button>
-        <button class="wave-btn" data-wave="pwm"      style="--c:#8B44C0">
+        <button class="wave-btn active" data-wave="pwm"      style="--c:#8B44C0">
           <svg viewBox="0 0 44 22" fill="none"><path d="M0,17 L2,17 L2,5 L8,5 L8,17 L24,17 L24,5 L30,5 L30,17 L44,17" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span class="wave-lbl">PWM</span>
         </button>
@@ -503,7 +507,7 @@
   </div><!-- /ctrl-band -->
 
   <!-- PWM band (hidden until PWM selected) -->
-  <div class="pwm-band" id="pwmControls" style="display:none">
+  <div class="pwm-band" id="pwmControls">
     <div class="ctrl-section">
       <div class="ctrl-title">Pulse Width Modulation</div>
       <div class="knobs-row">
@@ -520,6 +524,10 @@
   </div>
 
 </div><!-- /device -->
+
+<div style="text-align:center;margin-top:10px;font-family:'Courier New',monospace;font-size:0.75em;letter-spacing:0.08em;opacity:0.5;">
+  <a href="https://github.com/andrewglassett/xenharmonic-microtonal-synth" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;">github.com/andrewglassett/xenharmonic-microtonal-synth</a>
+</div>
 
 <script>
 'use strict';
@@ -654,7 +662,7 @@ function initAudio() {
 
 // ── Synth state ───────────────────────────────────────────────────
 const synth = {
-  waveform:    'sine',
+  waveform:    'pwm',
   attack:      0.01,
   decay:       0.10,
   sustain:     0.70,
@@ -870,6 +878,20 @@ function renderKeyboard() {
     el.className = 'key' + (isBlack(i) ? ' is-black' : '');
     el.setAttribute('data-key', k);
     el.innerHTML = `<div class="note">${getNoteName(i)}</div><div class="kchar">${keyChar(k)}</div>`;
+
+    el.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      initAudio();
+      el.setPointerCapture(e.pointerId);
+      if (!heldKeys.has(k)) { heldKeys.add(k); noteOn(k); }
+    });
+    el.addEventListener('pointerup',     () => { heldKeys.delete(k); noteOff(k); });
+    el.addEventListener('pointercancel', () => { heldKeys.delete(k); noteOff(k); });
+    el.addEventListener('pointerenter',  e => {
+      if (e.buttons && !heldKeys.has(k)) { heldKeys.add(k); noteOn(k); }
+    });
+    el.addEventListener('pointerleave',  () => { heldKeys.delete(k); noteOff(k); });
+
     kb.appendChild(el);
   });
 }
