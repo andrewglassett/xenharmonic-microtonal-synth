@@ -1,9 +1,9 @@
+
 # Xenharmonic Microtonal Synth
 
 A browser-based synthesizer for exploring microtonal and xenharmonic tuning systems, playable directly from your QWERTY keyboard. Built with the Web Audio API.
 
-![Synth Screenshot](screenshot.png)
-
+<img width="1001" height="652" alt="xenharmonic" src="https://github.com/user-attachments/assets/e09fdbce-3ca8-4342-ab0b-5797469c9431" />
 ---
 
 ## Features
