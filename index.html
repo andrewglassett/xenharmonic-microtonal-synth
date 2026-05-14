@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Xenharmonic Microtonal Synth</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #B8B4AC;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      font-family: system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    }
+
+    /* ── Device shell ─────────────────────────────────── */
+    .device {
+      background: #E0DDD8;
+      border-radius: 22px;
+      width: min(980px, 100%);
+      overflow: hidden;
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.6) inset,
+        0 -1px 0 rgba(0,0,0,0.12) inset,
+        0 24px 80px rgba(0,0,0,0.45),
+        0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    /* ── Header bar ───────────────────────────────────── */
+    .hdr {
+      background: #222220;
+      padding: 8px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .logo {
+      font-size: 0.68em;
+      font-weight: 800;
+      letter-spacing: 0.4em;
+      color: #D8D5D0;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .logo em { color: #FF5338; font-style: normal; }
+
+    .hdr-right {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .voices-badge {
+      font-size: 0.55em;
+      letter-spacing: 0.12em;
+      color: #666;
+      text-transform: uppercase;
+    }
+    .voices-badge span { color: #F5A020; font-weight: 700; }
+
+    .panic-btn {
+      background: transparent;
+      border: 1px solid #FF5338;
+      color: #FF5338;
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 0.55em;
+      font-family: inherit;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .panic-btn:hover { background: rgba(255,83,56,0.18); }
+
+    /* ── Display ──────────────────────────────────────── */
+    .display {
+      background: #0C0C0A;
+      padding: 10px 20px 8px;
+      border-bottom: 3px solid #181816;
+    }
+
+    .display-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 6px;
+    }
+
+    .disp-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .disp-item.right { align-items: flex-end; }
+
+    .disp-lbl {
+      font-size: 0.48em;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #3A3A38;
+    }
+
+    .disp-val {
+      font-size: 0.72em;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: #F5A020;
+    }
+
+    #visualizer {
+      display: block;
+      width: 100%;
+      height: 64px;
+    }
+
+    .display-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 6px;
+    }
+
+    #status {
+      font-size: 0.46em;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #333330;
+    }
+
+    .disp-wave {
+      font-size: 0.52em;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #40FF90;
+    }
+
+    /* ── Controls band ────────────────────────────────── */
+    .ctrl-band {
+      padding: 16px 20px;
+      display: flex;
+      gap: 28px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      border-bottom: 1px solid #CCCAC4;
+    }
+
+    .ctrl-section { display: flex; flex-direction: column; gap: 10px; }
+
+    .ctrl-title {
+      font-size: 0.52em;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #9A9890;
+      padding-bottom: 5px;
+      border-bottom: 1px solid #C8C5C0;
+    }
+
+    /* ── Waveform buttons ─────────────────────────────── */
+    .wave-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .wave-btn {
+      width: 54px;
+      height: 56px;
+      border: none;
+      border-radius: 9px;
+      background: #CCCAC4;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      position: relative;
+      overflow: hidden;
+      box-shadow:
+        0 2px 0 rgba(0,0,0,0.18),
+        0 1px 0 rgba(255,255,255,0.55) inset;
+      transition: transform 0.06s, box-shadow 0.06s;
+    }
+
+    .wave-btn svg { width: 34px; height: 16px; pointer-events: none; }
+    .wave-btn svg path { stroke: #888; }
+
+    .wave-lbl {
+      font-size: 0.46em;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #888;
+      pointer-events: none;
+    }
+
+    /* Colored bottom stripe */
+    .wave-btn::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--c, #888);
+      opacity: 0.35;
+      transition: opacity 0.1s;
+    }
+
+    .wave-btn:active {
+      transform: translateY(1px);
+      box-shadow: 0 1px 0 rgba(0,0,0,0.18);
+    }
+
+    .wave-btn.active {
+      background: #1E1E1C;
+      box-shadow: 0 1px 0 rgba(0,0,0,0.4), 0 0 0 2px var(--c, #888);
+    }
+    .wave-btn.active::after { opacity: 1; }
+    .wave-btn.active svg path { stroke: var(--c, #fff); }
+    .wave-btn.active .wave-lbl { color: var(--c, #fff); }
+
+    /* ── Knobs ────────────────────────────────────────── */
+    .knobs-row { display: flex; gap: 10px; }
+
+    .knob-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .knob-svg {
+      width: 62px;
+      height: 62px;
+      display: block;
+      cursor: ns-resize;
+      touch-action: none;
+    }
+
+    .knob-val {
+      font-size: 0.54em;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+      color: #222;
+      text-align: center;
+      min-width: 38px;
+    }
+
+    .knob-lbl {
+      font-size: 0.48em;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #9A9890;
+    }
+
+    /* ── Tuning ───────────────────────────────────────── */
+    .tune-section { min-width: 170px; flex: 1; max-width: 220px; }
+
+    select {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      background: #CCCAC4;
+      border: 1px solid #B8B5B0;
+      border-radius: 7px;
+      color: #1A1A18;
+      padding: 7px 26px 7px 10px;
+      font-family: inherit;
+      font-size: 0.72em;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 5 5-5' stroke='%23777' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.5) inset;
+    }
+    select:focus { border-color: #FF5338; }
+
+    .oct-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .oct-btn {
+      width: 30px;
+      height: 30px;
+      background: #CCCAC4;
+      border: none;
+      border-radius: 7px;
+      color: #1A1A18;
+      font-size: 1em;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 0 rgba(0,0,0,0.18), 0 1px 0 rgba(255,255,255,0.55) inset;
+      transition: transform 0.06s, box-shadow 0.06s;
+      flex-shrink: 0;
+    }
+    .oct-btn:active {
+      transform: translateY(1px);
+      box-shadow: 0 1px 0 rgba(0,0,0,0.18);
+    }
+
+    .oct-label {
+      font-size: 0.72em;
+      font-weight: 700;
+      color: #1A1A18;
+      text-align: center;
+      flex: 1;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── PWM band ─────────────────────────────────────── */
+    .pwm-band {
+      padding: 12px 20px 14px;
+      background: #D8D5D0;
+      border-bottom: 1px solid #C4C1BC;
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+    }
+
+    /* ── Keyboard ─────────────────────────────────────── */
+    .kb-band {
+      padding: 12px 16px 18px;
+    }
+
+    .keyboard {
+      display: flex;
+      gap: 3px;
+      overflow-x: auto;
+      padding: 7px;
+      background: #BDBAB4;
+      border-radius: 12px;
+      scrollbar-width: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15) inset;
+    }
+    .keyboard::-webkit-scrollbar { display: none; }
+
+    .key {
+      flex: 0 0 26px;
+      height: 78px;
+      border-radius: 6px;
+      background: #F2EFE8;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 4px 2px 5px;
+      cursor: default;
+      user-select: none;
+      box-shadow:
+        0 3px 0 rgba(0,0,0,0.22),
+        0 1px 0 rgba(255,255,255,0.7) inset;
+      transition: background 0.04s, box-shadow 0.04s, transform 0.04s;
+    }
+
+    .key.is-black {
+      background: #28261E;
+      height: 68px;
+      box-shadow: 0 3px 0 rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.08) inset;
+    }
+
+    .key .note {
+      font-size: 0.5em;
+      font-weight: 700;
+      color: #2A2820;
+      letter-spacing: 0;
+    }
+    .key.is-black .note { color: #A0A098; }
+
+    .key .kchar {
+      font-size: 0.44em;
+      color: #B0ADA8;
+      margin-top: 2px;
+    }
+    .key.is-black .kchar { color: #555; }
+
+    .key.active {
+      background: #FF5338;
+      transform: translateY(2px);
+      box-shadow: 0 1px 0 rgba(0,0,0,0.22), 0 0 18px rgba(255,83,56,0.55);
+    }
+    .key.active .note { color: #fff; }
+    .key.active .kchar { color: rgba(255,255,255,0.55); }
+
+    /* ── Vol knob (small, lives in header) ───────────── */
+    #volKnob { touch-action: none; user-select: none; }
+    #volKnob .knob-svg { width: 38px; height: 38px; cursor: ns-resize; }
+    #volKnob .knob-val { font-size: 0.46em; color: #666; }
+    #volKnob .knob-lbl { font-size: 0.42em; color: #555; letter-spacing: 0.15em; }
+  </style>
+</head>
+<body>
+
+<div class="device">
+
+  <!-- Header -->
+  <div class="hdr">
+    <div class="logo">Xenharmonic Microtonal Synth</div>
+    <div class="hdr-right">
+      <div class="knob-wrap" id="volKnob"></div>
+      <div class="voices-badge">VOICES <span id="polyCount">0</span></div>
+      <button class="panic-btn" id="panic">PANIC</button>
+    </div>
+  </div>
+
+  <!-- Display -->
+  <div class="display">
+    <div class="display-row">
+      <div class="disp-item">
+        <span class="disp-lbl">Tuning</span>
+        <span class="disp-val" id="dispTuning">24-TET</span>
+      </div>
+      <div class="disp-item right">
+        <span class="disp-lbl">Octave</span>
+        <span class="disp-val" id="dispOctave">4</span>
+      </div>
+    </div>
+    <canvas id="visualizer"></canvas>
+    <div class="display-footer">
+      <span id="status">CLICK OR PRESS A KEY TO ACTIVATE AUDIO</span>
+      <span class="disp-wave" id="dispWave">SINE</span>
+    </div>
+  </div>
+
+  <!-- Main controls -->
+  <div class="ctrl-band">
+
+    <!-- Waveform -->
+    <div class="ctrl-section">
+      <div class="ctrl-title">Waveform</div>
+      <div class="wave-row" id="waveGroup">
+        <button class="wave-btn active" data-wave="sine"     style="--c:#2B4FA3">
+          <svg viewBox="0 0 44 22" fill="none"><path d="M0,11 C4,11 6,2 11,2 C16,2 18,20 22,20 C26,20 28,2 33,2 C38,2 40,11 44,11" stroke-width="2" stroke-linecap="round"/></svg>
+          <span class="wave-lbl">Sine</span>
+        </button>
+        <button class="wave-btn" data-wave="square"   style="--c:#1A9A88">
+          <svg viewBox="0 0 44 22" fill="none"><path d="M0,17 L6,17 L6,5 L16,5 L16,17 L28,17 L28,5 L38,5 L38,17 L44,17" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="wave-lbl">Square</span>
+        </button>
+        <button class="wave-btn" data-wave="sawtooth" style="--c:#F5A020">
+          <svg viewBox="0 0 44 22" fill="none"><path d="M0,17 L11,5 L11,17 L22,5 L22,17 L33,5 L33,17 L44,5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="wave-lbl">Saw</span>
+        </button>
+        <button class="wave-btn" data-wave="triangle" style="--c:#FF5338">
+          <svg viewBox="0 0 44 22" fill="none"><path d="M0,17 L11,5 L22,17 L33,5 L44,17" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="wave-lbl">Tri</span>
+        </button>
+        <button class="wave-btn" data-wave="pwm"      style="--c:#8B44C0">
+          <svg viewBox="0 0 44 22" fill="none"><path d="M0,17 L2,17 L2,5 L8,5 L8,17 L24,17 L24,5 L30,5 L30,17 L44,17" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="wave-lbl">PWM</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ADSR -->
+    <div class="ctrl-section">
+      <div class="ctrl-title">Envelope</div>
+      <div class="knobs-row">
+        <div class="knob-wrap" id="knobA"></div>
+        <div class="knob-wrap" id="knobD"></div>
+        <div class="knob-wrap" id="knobS"></div>
+        <div class="knob-wrap" id="knobR"></div>
+      </div>
+    </div>
+
+    <!-- Tuning -->
+    <div class="ctrl-section tune-section">
+      <div class="ctrl-title">Tuning</div>
+      <select id="tuning">
+        <option value="12">12-TET — Standard</option>
+        <option value="19">19-TET</option>
+        <option value="24" selected>24-TET — Quarter-Tone</option>
+        <option value="31">31-TET</option>
+        <option value="53">53-TET</option>
+        <option value="pythagorean">Pythagorean</option>
+        <option value="just">Just Intonation</option>
+      </select>
+      <div class="oct-row">
+        <button class="oct-btn" id="octDown">−</button>
+        <span class="oct-label" id="octLabel">Octave 4</span>
+        <button class="oct-btn" id="octUp">+</button>
+      </div>
+    </div>
+
+  </div><!-- /ctrl-band -->
+
+  <!-- PWM band (hidden until PWM selected) -->
+  <div class="pwm-band" id="pwmControls" style="display:none">
+    <div class="ctrl-section">
+      <div class="ctrl-title">Pulse Width Modulation</div>
+      <div class="knobs-row">
+        <div class="knob-wrap" id="knobPwmW"></div>
+        <div class="knob-wrap" id="knobPwmR"></div>
+        <div class="knob-wrap" id="knobPwmD"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Keyboard -->
+  <div class="kb-band">
+    <div class="keyboard" id="keyboard"></div>
+  </div>
+
+</div><!-- /device -->
+
+<script>
+'use strict';
+
+// ── Rotary knob widget ────────────────────────────────────────────
+// Drag up to increase value, drag down to decrease.
+// Renders as an SVG arc knob; color-coded per parameter.
+
+class Knob {
+  constructor(container, { min, max, value, step = 0.001, color = '#888', label, fmt, onChange }) {
+    this.min = min; this.max = max; this.value = value;
+    this.step = step; this.color = color; this.fmt = fmt || (v => v.toFixed(2));
+    this.onChange = onChange;
+
+    container.innerHTML = `
+      <svg class="knob-svg" viewBox="0 0 60 60">
+        <path class="k-track" stroke="#3A3A38" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <path class="k-fill"  stroke="${color}" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <circle cx="30" cy="30" r="15" fill="#1E1E1C"/>
+        <circle cx="30" cy="30" r="14" fill="#2A2826"/>
+        <line class="k-tick" stroke="rgba(255,255,255,0.85)" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+      <div class="knob-val"></div>
+      <div class="knob-lbl">${label}</div>`;
+
+    this._track = container.querySelector('.k-track');
+    this._fill  = container.querySelector('.k-fill');
+    this._tick  = container.querySelector('.k-tick');
+    this._val   = container.querySelector('.knob-val');
+    this._svg   = container.querySelector('.knob-svg');
+
+    this._render();
+    this._bind();
+  }
+
+  // Angle 0 = 12-o'clock; positive = clockwise
+  _pt(deg, r = 24) {
+    const rad = deg * Math.PI / 180;
+    return { x: 30 + r * Math.sin(rad), y: 30 - r * Math.cos(rad) };
+  }
+
+  _arc(a1, a2, r = 24) {
+    const s = this._pt(a1, r), e = this._pt(a2, r);
+    const span = a2 - a1;
+    if (Math.abs(span) < 0.5) return `M ${s.x.toFixed(2)} ${s.y.toFixed(2)}`;
+    return `M ${s.x.toFixed(2)} ${s.y.toFixed(2)} A ${r} ${r} 0 ${span > 180 ? 1 : 0} 1 ${e.x.toFixed(2)} ${e.y.toFixed(2)}`;
+  }
+
+  _angle() {
+    return -135 + ((this.value - this.min) / (this.max - this.min)) * 270;
+  }
+
+  _render() {
+    const a = this._angle();
+    this._track.setAttribute('d', this._arc(-135, 135));
+    this._fill.setAttribute('d', this._arc(-135, a));
+    const inner = this._pt(a, 6), outer = this._pt(a, 13);
+    this._tick.setAttribute('x1', inner.x.toFixed(2));
+    this._tick.setAttribute('y1', inner.y.toFixed(2));
+    this._tick.setAttribute('x2', outer.x.toFixed(2));
+    this._tick.setAttribute('y2', outer.y.toFixed(2));
+    this._val.textContent = this.fmt(this.value);
+  }
+
+  _clamp(v) {
+    const s = this.step;
+    return Math.max(this.min, Math.min(this.max, Math.round(v / s) * s));
+  }
+
+  _bind() {
+    let startY, startVal, dragging = false;
+
+    this._svg.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      startY   = e.clientY;
+      startVal = this.value;
+      dragging = true;
+      this._svg.setPointerCapture(e.pointerId);
+    });
+
+    this._svg.addEventListener('pointerup',     () => { dragging = false; });
+    this._svg.addEventListener('pointercancel', () => { dragging = false; });
+
+    this._svg.addEventListener('pointermove', e => {
+      if (!dragging) return;
+      const pct = (startY - e.clientY) / 160;
+      this.value = this._clamp(startVal + pct * (this.max - this.min));
+      this._render();
+      this.onChange(this.value);
+    });
+
+    // Scroll-wheel fine adjustment
+    this._svg.addEventListener('wheel', e => {
+      e.preventDefault();
+      const delta = -e.deltaY * 0.0015 * (this.max - this.min);
+      this.value = this._clamp(this.value + delta);
+      this._render();
+      this.onChange(this.value);
+    }, { passive: false });
+  }
+
+  set(v) { this.value = this._clamp(v); this._render(); }
+}
+
+// ── PWM waveshaper curve ──────────────────────────────────────────
+// Sign function: negative input → -1, positive → +1.
+// Sawtooth + DC offset fed into this gives a pulse wave where
+// duty cycle = (1 + dcOffset) / 2.
+const PWM_CURVE = (() => {
+  const N = 8192, c = new Float32Array(N);
+  for (let i = 0; i < N; i++) c[i] = i < N / 2 ? -1 : 1;
+  return c;
+})();
+
+// ── Audio context ─────────────────────────────────────────────────
+let ctx = null, masterGain = null, analyser = null;
+
+function initAudio() {
+  if (!ctx) {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = ctx.createGain();
+    masterGain.gain.value = 0.5;
+    analyser = ctx.createAnalyser();
+    analyser.fftSize = 2048;
+    masterGain.connect(analyser);
+    analyser.connect(ctx.destination);
+    document.getElementById('status').textContent =
+      'AUDIO ACTIVE  ·  Z ROW = LOW  ·  NUMBER ROW = HIGH';
+  }
+  if (ctx.state !== 'running') ctx.resume();
+}
+
+// ── Synth state ───────────────────────────────────────────────────
+const synth = {
+  waveform:    'sine',
+  attack:      0.01,
+  decay:       0.10,
+  sustain:     0.70,
+  release:     0.30,
+  tuning:      '24',
+  baseOctave:  4,
+  pwmWidth:    0.50,
+  pwmLfoRate:  0.50,
+  pwmLfoDepth: 0.30,
+  voices:      new Map(),
+};
+
+// ── Tuning systems ────────────────────────────────────────────────
+const C4 = 261.6255653;
+
+const TUNINGS = {
+  '12': {
+    label: '12-TET', stepsPerOct: 12,
+    noteNames: ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'],
+    blackSteps: new Set([1,3,6,8,10]),
+  },
+  '19': {
+    label: '19-TET', stepsPerOct: 19,
+    noteNames: ['C','C#','Db','D','D#','Eb','E','F','F#','Gb','G','G#','Ab','A','A#','Bb','B','Cb','B#'],
+    blackSteps: new Set([1,2,4,5,7,8,9,11,12,14,15,17,18]),
+  },
+  '24': {
+    label: '24-TET', stepsPerOct: 24,
+    noteNames: ['C','C+','C#','C#+','D','D+','D#','D#+','E','E+','F','F+','F#','F#+','G','G+','G#','G#+','A','A+','A#','A#+','B','B+'],
+    blackSteps: new Set([1,3,5,7,9,11,13,15,17,19,21,23]),
+  },
+  '31': { label: '31-TET', stepsPerOct: 31, noteNames: null, blackSteps: new Set() },
+  '53': { label: '53-TET', stepsPerOct: 53, noteNames: null, blackSteps: new Set() },
+  'pythagorean': {
+    label: 'Pythagorean', stepsPerOct: 12,
+    ratios: [1, 2187/2048, 9/8, 32/27, 81/64, 4/3, 729/512, 3/2, 128/81, 27/16, 16/9, 243/128],
+    noteNames: ['C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B'],
+    blackSteps: new Set([1,3,6,8,10]),
+  },
+  'just': {
+    label: 'Just (5-limit)', stepsPerOct: 12,
+    ratios: [1, 16/15, 9/8, 6/5, 5/4, 4/3, 45/32, 3/2, 8/5, 5/3, 9/5, 15/8],
+    noteNames: ['C','Db','D','Eb','E','F','F#','G','Ab','A','Bb','B'],
+    blackSteps: new Set([1,3,6,8,10]),
+  },
+};
+
+// Key order: z-row = lowest, number-row = highest
+const KEY_ORDER = [
+  'z','x','c','v','b','n','m',',','.',  '/',
+  'a','s','d','f','g','h','j','k','l',  ';',
+  'q','w','e','r','t','y','u','i','o',  'p',
+  '1','2','3','4','5','6','7','8','9',  '0',
+];
+const KEY_CHARS = { ',':',', '.':'.', '/':'/', ';':';' };
+const keyChar = k => KEY_CHARS[k] ?? k.toUpperCase();
+
+// ── Frequency ─────────────────────────────────────────────────────
+function getFreq(idx) {
+  const t = TUNINGS[synth.tuning];
+  const n = t.stepsPerOct;
+  const totalStep = idx + (synth.baseOctave - 4) * n;
+  if (t.ratios) {
+    const oct = Math.floor(totalStep / n);
+    return C4 * Math.pow(2, oct) * t.ratios[((totalStep % n) + n) % n];
+  }
+  return C4 * Math.pow(2, totalStep / n);
+}
+
+function getNoteName(idx) {
+  const t = TUNINGS[synth.tuning];
+  const n = t.stepsPerOct;
+  const step = ((idx % n) + n) % n;
+  return t.noteNames ? t.noteNames[step] : String(step);
+}
+
+function isBlack(idx) {
+  const t = TUNINGS[synth.tuning];
+  const n = t.stepsPerOct;
+  return t.blackSteps?.has(((idx % n) + n) % n) ?? false;
+}
+
+// ── Voice management ──────────────────────────────────────────────
+const MAX_VOICES = 12;
+
+function noteOn(key) {
+  if (!ctx) initAudio();
+  if (synth.voices.has(key) || synth.voices.size >= MAX_VOICES) return;
+  const idx = KEY_ORDER.indexOf(key);
+  if (idx === -1) return;
+
+  const freq = getFreq(idx);
+  const now  = ctx.currentTime;
+
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.linearRampToValueAtTime(1.0, now + synth.attack);
+  gain.gain.linearRampToValueAtTime(synth.sustain, now + synth.attack + synth.decay);
+  gain.connect(masterGain);
+
+  let osc, extra = [], pwm = null;
+
+  if (synth.waveform === 'pwm') {
+    const sawOsc   = ctx.createOscillator();
+    sawOsc.type    = 'sawtooth';
+    sawOsc.frequency.setValueAtTime(freq, now);
+
+    const dcSource = new ConstantSourceNode(ctx, { offset: 2 * synth.pwmWidth - 1 });
+
+    const shaper   = ctx.createWaveShaper();
+    shaper.curve   = PWM_CURVE;
+    shaper.oversample = '4x';
+
+    const sumNode  = ctx.createGain();
+    sumNode.gain.value = 1;
+    sawOsc.connect(sumNode);
+    dcSource.connect(sumNode);
+    sumNode.connect(shaper);
+    shaper.connect(gain);
+
+    const lfoOsc  = ctx.createOscillator();
+    lfoOsc.type   = 'sine';
+    lfoOsc.frequency.setValueAtTime(synth.pwmLfoRate, now);
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.setValueAtTime(synth.pwmLfoDepth, now);
+    lfoOsc.connect(lfoGain);
+    lfoGain.connect(dcSource.offset);
+
+    sawOsc.start(now); dcSource.start(now); lfoOsc.start(now);
+    osc   = sawOsc;
+    extra = [dcSource, lfoOsc];
+    pwm   = { dcSource, lfoOsc, lfoGain };
+  } else {
+    osc = ctx.createOscillator();
+    osc.type = synth.waveform;
+    osc.frequency.setValueAtTime(freq, now);
+    osc.connect(gain);
+    osc.start(now);
+  }
+
+  synth.voices.set(key, { osc, gain, extra, pwm });
+  setKeyActive(key, true);
+  updatePoly();
+}
+
+function noteOff(key) {
+  const v = synth.voices.get(key);
+  if (!v) return;
+  const now    = ctx.currentTime;
+  const stopAt = now + synth.release + 0.02;
+  v.gain.gain.cancelScheduledValues(now);
+  v.gain.gain.setValueAtTime(v.gain.gain.value, now);
+  v.gain.gain.linearRampToValueAtTime(0.0001, now + synth.release);
+  v.osc.stop(stopAt);
+  v.extra.forEach(n => { try { n.stop(stopAt); } catch(_){} });
+  synth.voices.delete(key);
+  setKeyActive(key, false);
+  updatePoly();
+}
+
+function panicStop() {
+  synth.voices.forEach(v => {
+    try { v.osc.stop(); } catch(_){}
+    v.extra.forEach(n => { try { n.stop(); } catch(_){} });
+  });
+  synth.voices.clear();
+  document.querySelectorAll('.key.active').forEach(el => el.classList.remove('active'));
+  heldKeys.clear();
+  updatePoly();
+}
+
+// ── Keyboard input ────────────────────────────────────────────────
+const heldKeys = new Set();
+
+function normalizeKey(e) {
+  if (e.key === ',') return ',';
+  if (e.key === '.') return '.';
+  if (e.key === '/') return '/';
+  if (e.key === ';') return ';';
+  return e.key.toLowerCase();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.repeat) return;
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  const k = normalizeKey(e);
+  if (KEY_ORDER.includes(k)) {
+    e.preventDefault();
+    if (!heldKeys.has(k)) { heldKeys.add(k); noteOn(k); }
+  }
+});
+
+document.addEventListener('keyup', e => {
+  const k = normalizeKey(e);
+  if (heldKeys.has(k)) { heldKeys.delete(k); noteOff(k); }
+});
+
+// ── UI helpers ────────────────────────────────────────────────────
+function setKeyActive(k, on) {
+  const el = document.querySelector(`[data-key="${CSS.escape(k)}"]`);
+  if (el) el.classList.toggle('active', on);
+}
+
+function updatePoly() {
+  document.getElementById('polyCount').textContent = synth.voices.size;
+}
+
+function renderKeyboard() {
+  const kb = document.getElementById('keyboard');
+  kb.innerHTML = '';
+  KEY_ORDER.forEach((k, i) => {
+    const el = document.createElement('div');
+    el.className = 'key' + (isBlack(i) ? ' is-black' : '');
+    el.setAttribute('data-key', k);
+    el.innerHTML = `<div class="note">${getNoteName(i)}</div><div class="kchar">${keyChar(k)}</div>`;
+    kb.appendChild(el);
+  });
+}
+
+// ── Oscilloscope ──────────────────────────────────────────────────
+const canvas = document.getElementById('visualizer');
+const ctx2d  = canvas.getContext('2d');
+
+function resizeCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  const r   = canvas.getBoundingClientRect();
+  canvas.width  = r.width  * dpr;
+  canvas.height = r.height * dpr;
+}
+
+function drawScope() {
+  requestAnimationFrame(drawScope);
+  const W = canvas.width, H = canvas.height;
+  ctx2d.fillStyle = '#0C0C0A';
+  ctx2d.fillRect(0, 0, W, H);
+
+  // Subtle grid
+  ctx2d.strokeStyle = 'rgba(50,50,48,0.8)';
+  ctx2d.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = H / 4 * i;
+    ctx2d.beginPath(); ctx2d.moveTo(0, y); ctx2d.lineTo(W, y); ctx2d.stroke();
+  }
+
+  if (!analyser) return;
+
+  const buf = new Float32Array(analyser.fftSize);
+  analyser.getFloatTimeDomainData(buf);
+
+  // Zero-crossing sync for stable display
+  let start = 0;
+  for (let i = 1; i < buf.length - 1; i++) {
+    if (buf[i - 1] < 0 && buf[i] >= 0) { start = i; break; }
+  }
+
+  const len    = Math.min(buf.length - start, 1024);
+  const sliceW = W / len;
+
+  ctx2d.strokeStyle = '#40FF90';
+  ctx2d.shadowColor = 'rgba(64,255,144,0.35)';
+  ctx2d.shadowBlur  = 5;
+  ctx2d.lineWidth   = 2;
+  ctx2d.beginPath();
+  for (let i = 0; i < len; i++) {
+    const x = i * sliceW;
+    const y = (0.5 - buf[start + i] * 0.44) * H;
+    i === 0 ? ctx2d.moveTo(x, y) : ctx2d.lineTo(x, y);
+  }
+  ctx2d.stroke();
+  ctx2d.shadowBlur = 0;
+}
+
+// ── Knob init ─────────────────────────────────────────────────────
+const knobA = new Knob(document.getElementById('knobA'), {
+  min: 0.001, max: 3, value: 0.01, step: 0.001,
+  color: '#2B4FA3', label: 'A',
+  fmt: v => v < 1 ? v.toFixed(3) + 's' : v.toFixed(2) + 's',
+  onChange: v => { synth.attack = v; },
+});
+const knobD = new Knob(document.getElementById('knobD'), {
+  min: 0.001, max: 3, value: 0.10, step: 0.001,
+  color: '#F5A020', label: 'D',
+  fmt: v => v < 1 ? v.toFixed(3) + 's' : v.toFixed(2) + 's',
+  onChange: v => { synth.decay = v; },
+});
+const knobS = new Knob(document.getElementById('knobS'), {
+  min: 0, max: 1, value: 0.70, step: 0.01,
+  color: '#1A9A88', label: 'S',
+  fmt: v => v.toFixed(2),
+  onChange: v => { synth.sustain = v; },
+});
+const knobR = new Knob(document.getElementById('knobR'), {
+  min: 0.001, max: 5, value: 0.30, step: 0.001,
+  color: '#FF5338', label: 'R',
+  fmt: v => v < 1 ? v.toFixed(3) + 's' : v.toFixed(2) + 's',
+  onChange: v => { synth.release = v; },
+});
+
+// Volume knob (small, in header)
+const knobVol = new Knob(document.getElementById('volKnob'), {
+  min: 0, max: 1, value: 0.5, step: 0.01,
+  color: '#888', label: 'VOL',
+  fmt: v => Math.round(v * 100) + '%',
+  onChange: v => { if (masterGain) masterGain.gain.setTargetAtTime(v, ctx.currentTime, 0.01); },
+});
+
+// PWM knobs
+const knobPwmW = new Knob(document.getElementById('knobPwmW'), {
+  min: 5, max: 95, value: 50, step: 1,
+  color: '#8B44C0', label: 'Width',
+  fmt: v => Math.round(v) + '%',
+  onChange: v => {
+    synth.pwmWidth = v / 100;
+    const offset = 2 * synth.pwmWidth - 1;
+    if (!ctx) return;
+    synth.voices.forEach(vv => { if (vv.pwm) vv.pwm.dcSource.offset.setTargetAtTime(offset, ctx.currentTime, 0.01); });
+  },
+});
+const knobPwmR = new Knob(document.getElementById('knobPwmR'), {
+  min: 0.05, max: 20, value: 0.5, step: 0.05,
+  color: '#8B44C0', label: 'LFO Rate',
+  fmt: v => v.toFixed(2) + 'Hz',
+  onChange: v => {
+    synth.pwmLfoRate = v;
+    if (!ctx) return;
+    synth.voices.forEach(vv => { if (vv.pwm) vv.pwm.lfoOsc.frequency.setTargetAtTime(v, ctx.currentTime, 0.01); });
+  },
+});
+const knobPwmD = new Knob(document.getElementById('knobPwmD'), {
+  min: 0, max: 0.9, value: 0.3, step: 0.01,
+  color: '#8B44C0', label: 'LFO Depth',
+  fmt: v => v.toFixed(2),
+  onChange: v => {
+    synth.pwmLfoDepth = v;
+    if (!ctx) return;
+    synth.voices.forEach(vv => { if (vv.pwm) vv.pwm.lfoGain.gain.setTargetAtTime(v, ctx.currentTime, 0.01); });
+  },
+});
+
+// ── Waveform selection ────────────────────────────────────────────
+document.getElementById('waveGroup').addEventListener('click', e => {
+  const btn = e.target.closest('.wave-btn');
+  if (!btn) return;
+  document.querySelectorAll('.wave-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  synth.waveform = btn.dataset.wave;
+  document.getElementById('dispWave').textContent = btn.dataset.wave.toUpperCase();
+  document.getElementById('pwmControls').style.display = synth.waveform === 'pwm' ? '' : 'none';
+});
+
+// ── Tuning / octave ───────────────────────────────────────────────
+document.getElementById('tuning').addEventListener('change', e => {
+  synth.tuning = e.target.value;
+  document.getElementById('dispTuning').textContent = TUNINGS[e.target.value].label;
+  renderKeyboard();
+});
+
+document.getElementById('octDown').addEventListener('click', () => {
+  synth.baseOctave = Math.max(0, synth.baseOctave - 1);
+  document.getElementById('octLabel').textContent = 'Octave ' + synth.baseOctave;
+  document.getElementById('dispOctave').textContent = synth.baseOctave;
+  renderKeyboard();
+});
+document.getElementById('octUp').addEventListener('click', () => {
+  synth.baseOctave = Math.min(8, synth.baseOctave + 1);
+  document.getElementById('octLabel').textContent = 'Octave ' + synth.baseOctave;
+  document.getElementById('dispOctave').textContent = synth.baseOctave;
+  renderKeyboard();
+});
+
+// ── Panic ─────────────────────────────────────────────────────────
+document.getElementById('panic').addEventListener('click', panicStop);
+
+// ── Audio init on interaction ─────────────────────────────────────
+document.addEventListener('click',   initAudio);
+document.addEventListener('keydown', initAudio);
+
+// Blur controls after use so keyboard focus returns to the document immediately
+document.querySelectorAll('select').forEach(el => el.addEventListener('change', () => el.blur()));
+document.querySelectorAll('.oct-btn, .wave-btn, .panic-btn').forEach(el => {
+  el.addEventListener('click', () => el.blur());
+});
+
+// ── Init ──────────────────────────────────────────────────────────
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+renderKeyboard();
+drawScope();
+</script>
+</body>
+</html>
